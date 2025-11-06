@@ -7,6 +7,7 @@
 
   <style>
     :root { font-size: 1px; }
+
     body {
       font-size: 16em;
       line-height: 1.5;
@@ -17,12 +18,14 @@
       color: hsl(0 0% 10%);
       overflow-x: hidden;
     }
+
     .container {
       max-width: min(64ch, 100vw - 8px);
       width: 100%;
       margin-inline: auto;
       padding: 1em 0;
     }
+
     textarea {
       width: 100%;
       min-height: 200px;
@@ -35,17 +38,25 @@
       border: 1px solid hsl(0 0% 80%);
       resize: vertical;
     }
+
     #markdown-preview {
       border-left: 4px solid hsl(220 50% 50%);
       padding-left: 1em;
       background: hsl(0 0% 96%);
+    }
+
+    /* ✅ Images inside preview are responsive */
+    #markdown-preview img {
+      max-width: 100%;
+      height: auto;
+      display: block;
     }
   </style>
 
   <!-- Markdown parser -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <!-- MathJax config -->
+  <!-- MathJax configuration -->
   <script>
     window.MathJax = {
       tex: {
@@ -53,16 +64,17 @@
         inlineMath: [['$','$'], ['\\(','\\)']]
       },
       svg: {
-        fontCache: 'none', // ✅ embeds fonts in SVGs for export
+        fontCache: 'none', // ✅ embed fonts in SVGs for export
         displayAlign: 'left',
         linebreaks: { automatic: true, width: "container" }
       },
       startup: {
-        typeset: false // we will manually control rendering
+        typeset: false // manual rendering control
       }
     };
   </script>
-  <!-- Load MathJax (lightweight version) -->
+
+  <!-- MathJax lightweight SVG build -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-svg-nofont.js"></script>
 </head>
 
@@ -72,7 +84,8 @@
 
     <p>
       Upload a <code>.md</code> file or type Markdown with equations.
-      Supports inline math like <code>$x^2$</code> and block math with <code>$$</code>.
+      Supports inline math like <code>$x^2$</code>, block math with <code>$$</code>,
+      and images that auto‑scale to fit.
     </p>
 
     <input type="file" id="markdown-file" accept=".md,text/markdown" />
@@ -86,7 +99,7 @@
     const textarea = document.getElementById('markdown-input');
     const preview = document.getElementById('markdown-preview');
 
-    // ✅ Updated render function with proper MathJax waiting
+    // ✅ Render Markdown + MathJax
     async function renderMarkdownAndMath(markdown) {
       const html = marked.parse(markdown);
       preview.innerHTML = html;
@@ -98,7 +111,7 @@
       }
     }
 
-    // Load from localStorage
+    // Restore from localStorage on load
     window.addEventListener('DOMContentLoaded', async () => {
       const savedMarkdown = localStorage.getItem('markdown-input');
       if (savedMarkdown) {
@@ -107,7 +120,7 @@
       }
     });
 
-    // Update preview on typing
+    // Live preview on input
     textarea.addEventListener('input', async () => {
       const raw = textarea.value;
       localStorage.setItem('markdown-input', raw);
@@ -126,16 +139,13 @@
       reader.readAsText(file);
     });
 
-    // ✅ Export rendered preview (MathJax already rendered)
+    // ✅ Export rendered preview (static SVG math + responsive images)
     document.getElementById('export-html').addEventListener('click', async () => {
-      // Ensure rendering is done
       await MathJax?.startup?.promise;
       await MathJax.typesetPromise([preview]);
 
-      // Clone the rendered content
       const rendered = preview.cloneNode(true);
 
-      // Export as standalone HTML
       const fullHTML = `
 <!DOCTYPE html>
 <html lang="en">
@@ -144,11 +154,20 @@
   <title>Exported Markdown</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-size: 16px; font-family: system-ui, sans-serif; max-width: 64ch; margin: 2em auto; line-height: 1.5; color: #111; background: #fafafa; }
+    body {
+      font-size: 16px;
+      font-family: system-ui, sans-serif;
+      max-width: 64ch;
+      margin: 2em auto;
+      line-height: 1.5;
+      color: #111;
+      background: #fafafa;
+    }
     code { background: #eee; padding: 0.2em 0.4em; }
     pre { background: #eee; padding: 1em; overflow-x: auto; }
     h1, h2, h3 { margin-top: 1.5em; }
     svg { max-width: 100%; height: auto; }
+    img { max-width: 100%; height: auto; display: block; } /* ✅ responsive images */
   </style>
 </head>
 <body>
