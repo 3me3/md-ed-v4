@@ -1,1 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown Editor with MathJax Export</title>
 
+  <style>
+    :root { font-size: 1px; }
+    body {
+      font-size: 16em;
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, sans-serif;
+      background-color: hsl(0 0% 98%);
+      color: hsl(0 0% 10%);
+      overflow-x: hidden;
+    }
+    .container {
+      max-width: min(64ch, 100vw - 8px);
+      width: 100%;
+      margin-inline: auto;
+      padding: 1em 0;
+    }
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      font-family: monospace;
+      font-size: 1em;
+      line-height: 1.5;
+      padding: 1em;
+      margin-bottom: 2em;
+      background: hsl(0 0% 96%);
+      border: 1px solid hsl(0 0% 80%);
+      resize: vertical;
+    }
+    #markdown-preview {
+      border-left: 4px solid hsl(220 50% 50%);
+      padding-left: 1em;
+      background: hsl(0 0% 96%);
+    }
+  </style>
+
+  <!-- Markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- MathJax config -->
+  <script>
+    window.MathJax = {
+      tex: {
+        displayMath: [['$$','$$'], ['\\[','\\]']],
+        inlineMath: [['$','$'], ['\\(','\\)']]
+      },
+      svg: {
+        fontCache: 'none', // ✅ embeds fonts in SVGs for export
+        displayAlign: 'left',
+        linebreaks: { automatic: true, width: "container" }
+      },
+      startup: {
+        typeset: false // we will manually control rendering
+      }
+    };
+  </script>
+  <!-- Load MathJax (lightweight version) -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-svg-nofont.js"></script>
+</head>
+
+<body>
+  <main class="container">
+    <h1>Markdown Editor with MathJax</h1>
+
+    <p>
+      Upload a <code>.md</code> file or type Markdown with equations.
+      Supports inline math like <code>$x^2$</code> and block math with <code>$$</code>.
+    </p>
+
+    <input type="file" id="markdown-file" accept=".md,text/markdown" />
+    <textarea id="markdown-input" placeholder="Type Markdown here..."></textarea>
+    <div id="markdown-preview"></div>
+    <button id="export-html" style="margin-top: 1.5em;">Export as HTML</button>
+  </main>
+
+  <script>
+    const fileInput = document.getElementById('markdown-file');
+    const textarea = document.getElementById('markdown-input');
+    const preview = document.getElementById('markdown-preview');
+
+    // ✅ Updated render function with proper MathJax waiting
+    async function renderMarkdownAndMath(markdown) {
+      const html = marked.parse(markdown);
+      preview.innerHTML = html;
+
+      if (window.MathJax?.startup?.promise) {
+        await MathJax.startup.promise;
+        MathJax.typesetClear?.([preview]);
+        await MathJax.typesetPromise([preview]);
+      }
+    }
+
+    // Load from localStorage
+    window.addEventListener('DOMContentLoaded', async () => {
+      const savedMarkdown = localStorage.getItem('markdown-input');
+      if (savedMarkdown) {
+        textarea.value = savedMarkdown;
+        await renderMarkdownAndMath(savedMarkdown);
+      }
+    });
+
+    // Update preview on typing
+    textarea.addEventListener('input', async () => {
+      const raw = textarea.value;
+      localStorage.setItem('markdown-input', raw);
+      await renderMarkdownAndMath(raw);
+    });
+
+    // Load .md file
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        textarea.value = event.target.result;
+        textarea.dispatchEvent(new Event('input'));
+      };
+      reader.readAsText(file);
+    });
+
+    // ✅ Export rendered preview (MathJax already rendered)
+    document.getElementById('export-html').addEventListener('click', async () => {
+      // Ensure rendering is done
+      await MathJax?.startup?.promise;
+      await MathJax.typesetPromise([preview]);
+
+      // Clone the rendered content
+      const rendered = preview.cloneNode(true);
+
+      // Export as standalone HTML
+      const fullHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Exported Markdown</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-size: 16px; font-family: system-ui, sans-serif; max-width: 64ch; margin: 2em auto; line-height: 1.5; color: #111; background: #fafafa; }
+    code { background: #eee; padding: 0.2em 0.4em; }
+    pre { background: #eee; padding: 1em; overflow-x: auto; }
+    h1, h2, h3 { margin-top: 1.5em; }
+    svg { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+${rendered.innerHTML}
+</body>
+</html>`.trim();
+
+      const blob = new Blob([fullHTML], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = "exported-markdown.html";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>
